@@ -17,5 +17,6 @@ CS336 is intentionally implementation-heavy. Students are expected to write subs
 
 * 在学生没有明确的指明下，不能擅自更改任何文件
 * 尽量引导学生进行思考
-* 
+* 所有md文件都放入md文件夹中
+
 

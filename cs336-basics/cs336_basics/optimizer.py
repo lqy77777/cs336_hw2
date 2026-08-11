@@ -1,85 +1,113 @@
-from __future__ import annotations
-
-import math
-from collections.abc import Callable, Iterable
-
 import torch
+import torch.nn as nn
+from math import sqrt,cos,pi
+from einops import einsum
+from einops import rearrange
+from jaxtyping import Bool, Float, Int
+from torch import Tensor
+from collections.abc import Callable, Iterable
+from typing import Optional
 
 
-def get_cosine_lr(
-    it: int,
-    max_learning_rate: float,
-    min_learning_rate: float,
-    warmup_iters: int,
-    cosine_cycle_iters: int,
-):
-    """Cosine with warmup learning rate scheduler."""
-    # First, we linearly warmup for warmup_iters steps.
-    if it < warmup_iters:
-        return max_learning_rate * it / warmup_iters
-    # Then, if it > cosine_cycle_iters, we return min learning rate.
-    if it > cosine_cycle_iters:
-        return min_learning_rate
-    # Else, we use cosine decay down to min learning rate.
-    decay_ratio = (it - warmup_iters) / (cosine_cycle_iters - warmup_iters)
-    assert 0 <= decay_ratio <= 1
-    coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio))
-    return min_learning_rate + coeff * (max_learning_rate - min_learning_rate)
-
+def cross_entropy(
+        logits: Float[Tensor,'... vocab_size'],  
+        target: Int[Tensor,'...']  #第i+1个位置的真实token编号
+) -> Tensor:
+    #虽然cross_entropy的结果是一个数字，但这个数字需要反向传播
+    #所以return的其实是一个0维tensor，不能是float
+    max_logits = torch.max(logits,dim = -1, keepdim= True)[0]
+    denominator = torch.log(torch.sum(
+        torch.exp(logits-max_logits),dim = -1))
+    numerator = torch.gather(
+        logits, dim = -1,index = target.unsqueeze(-1)).squeeze(-1)
+    single = - numerator + max_logits[...,0] + denominator
+    return torch.mean(single)
 
 class AdamW(torch.optim.Optimizer):
-    def __init__(
-        self,
-        params: Iterable[torch.nn.parameter.Parameter],
-        lr: float = 1e-3,
-        betas: tuple[float, float] = (0.9, 0.999),
-        eps: float = 1e-8,
-        weight_decay: float = 0.01,
+    def __init__(self, params,
+                  lr = 1e-3,
+                  betas = (0.9,0.95),
+                  eps = 1e-8,
+                  weight_decay = 0.1
     ):
-        if not 0.0 <= lr:
-            raise ValueError(f"Invalid learning rate: {lr}")
-        if not 0.0 <= eps:
-            raise ValueError(f"Invalid epsilon value: {eps}")
-        if not 0.0 <= betas[0] < 1.0:
-            raise ValueError(f"Invalid beta parameter at index 0: {betas[0]}")
-        if not 0.0 <= betas[1] < 1.0:
-            raise ValueError(f"Invalid beta parameter at index 1: {betas[1]}")
-        defaults = dict(lr=lr, betas=betas, eps=eps, weight_decay=weight_decay)
+        if lr < 0:
+            raise ValueError(f'Invalid learning rate: {lr}')
+        defaults = {'lr':lr,
+                    'betas': betas,
+                    'eps': eps,
+                    'weight_decay': weight_decay
+        }   #例行惯例
         super().__init__(params, defaults)
-
-    def step(self, closure: Callable | None = None):
-        loss = None
+    @torch.no_grad
+    def step(self, closure: Optional[Callable] = None):
+        loss = None 
         if closure is not None:
-            loss = closure()
+            with torch.enable_grad():
+                loss = closure()
         for group in self.param_groups:
+            lr = group["lr"] # Get the learning rate.
+            beta_1, beta_2 = group['betas']
+            eps = group['eps']
+            weight_decay = group['weight_decay']
             for p in group["params"]:
                 if p.grad is None:
                     continue
-
-                grad = p.grad.data
-                if grad.is_sparse:
-                    raise RuntimeError("Adam does not support sparse gradients")
-
-                state = self.state[p]
-                alpha = group["lr"]
-                beta_1, beta_2 = group["betas"]
-                eps = group["eps"]
-                t = state.get("t", 1)
-
-                # Apply weight decay
-                alpha_t = alpha * (math.sqrt(1 - (beta_2**t)) / (1 - (beta_1**t)))
-                p.data -= alpha * group["weight_decay"] * p.data
-
-                prev_m_t = state.get("m", torch.zeros_like(grad))
-                prev_v_t = state.get("v", torch.zeros_like(grad))
-
-                m_t = beta_1 * prev_m_t + ((1 - beta_1) * grad)
-                v_t = beta_2 * prev_v_t + ((1 - beta_2) * torch.square(grad))
-
-                # Apply adjusted gradient step
-                p.data -= alpha_t * m_t / (torch.sqrt(v_t) + eps)
-
-                state["m"] = m_t
-                state["v"] = v_t
-                state["t"] = t + 1
+                state = self.state[p] # Get state associated with p.
+                t = state.get("t", 1) # Get iteration number from the state, or 1.
+                if 'm' not in state:
+                    state['m'] = torch.zeros_like(p)
+                    state['v'] = torch.zeros_like(p)
+                m = state['m']
+                v = state['v']
+                grad = p.grad # Get the gradient of loss with respect to p.
+                alpha = lr * (sqrt(1-beta_2 ** t) / (1-beta_1 ** t))
+                #原地操作，节省显存
+                m.mul_(beta_1).add_(grad, alpha = 1-beta_1)
+                v.mul_(beta_2).addcmul_(grad,grad,value=1-beta_2)
+                p -= lr * weight_decay * p
+                p -= alpha * (m / (torch.sqrt(v) + eps))
+                state["t"] = t + 1 # Increment iteration number.
         return loss
+
+def cosine_learning_rate(
+        t,
+        alpha_max,
+        alpha_min,
+        T_w,
+        T_c
+) -> float:
+    if t < T_w:
+        alpha = (t/T_w) * alpha_max
+    elif t <= T_c:
+        temp = ((t-T_w)/(T_c-T_w)) * pi
+        alpha = alpha_min + ((1+cos(temp)) * (alpha_max-alpha_min)) / 2
+    else:
+        alpha = alpha_min
+    return alpha
+
+def grad_global_norm(parameters: Iterable[nn.Parameter]) -> float:
+    """
+    """
+    total = None
+    for p in parameters:
+        if p.grad is None:
+            continue
+        sq = torch.sum(p.grad.detach() ** 2)
+        total = sq if total is None else total + sq
+    return 0.0 if total is None else sqrt(total.item())
+
+def gradient_clipping(
+        p: Iterable[nn.Parameter],
+        M: float,
+        eps: float =1e-6
+):
+    p = list(p)
+    norm = grad_global_norm(p)
+    if norm > M:
+        with torch.no_grad():
+            for parameter in p:
+                if parameter.grad is None:
+                    continue
+                scale = ( M /( norm + eps))
+                parameter.grad *= scale
+    return norm

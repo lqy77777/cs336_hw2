@@ -19,3 +19,16 @@ CS336 is intentionally implementation-heavy. Students are expected to write subs
 * 尽量引导学生进行思考
 
 * 所有的md文件都保存到md文件夹里
+
+## Markdown 数学公式规范
+
+* Markdown 中的行内数学公式统一写成 `$...$`，例如 `$I_{\text{arith}} = F/Q$`。
+* Markdown 中的块级数学公式统一使用独占一行的 `$$` 包围，并在公式块前后保留空行，例如：
+
+  ```markdown
+  $$
+  I_{\text{acc}} = \frac{C}{B}
+  $$
+  ```
+
+* 不要使用 `\(...\)` 或 `\[...\]` 作为 Markdown 数学公式分隔符，以保证公式可由 VS Code 内置的 KaTeX 预览正常渲染。

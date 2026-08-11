@@ -39,6 +39,12 @@ MODEL_CONFIGS = {
         "num_layers": 32,
         "num_heads": 32,
     },
+    "10B":{
+        "d_model": 4608,
+        "d_ff": 12288,
+        "num_layers": 50,
+        "num_heads": 36,
+    }
 }
 DTYPE_MAP = {
     "float32": torch.float32,
@@ -112,7 +118,7 @@ def parse_args():
     )
     parser.add_argument(
         '--model-size',
-        choices = ['small','medium','large','xl'],
+        choices = ['small','medium','large','xl','10B'],
         default = 'small',
         help = 'Transformer model configuration'
     )
@@ -135,6 +141,7 @@ def parse_args():
     return args
 def main():
     args = parse_args()
+
     dtype = DTYPE_MAP[args.dtype]
     device = torch.device(args.device)
     mode = args.mode
@@ -143,6 +150,7 @@ def main():
     model_size = args.model_size
     model_config = MODEL_CONFIGS[model_size]
     vocab_size = 10000
+
     model = transformer_lm(
         vocab_size=vocab_size,
         context_length=context_length,
@@ -154,7 +162,9 @@ def main():
         device=device,
         dtype=dtype,
     )
+
     optimizer = AdamW(model.parameters(),lr = 1e-3)
+
     #生成随机token
     inputs = torch.randint(low = 0, high = vocab_size, size = (batch_size,context_length), device=device,dtype = torch.long)
     targets = torch.randint(low = 0, high = vocab_size, size = (batch_size,context_length),device = device, dtype = torch.long)

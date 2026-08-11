@@ -7,6 +7,7 @@ import json, time
 from timeit import default_timer
 import argparse
 
+print('haha')
 from cs336_basics.tool import data_loader, save_checkpoint, load_checkpoint, load_tokens
 from cs336_basics.tool import resolve_device, make_fixed_batches,log_jsonl
 from cs336_basics.transformer import transformer_lm

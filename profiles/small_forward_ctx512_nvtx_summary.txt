@@ -1,0 +1,11 @@
+Generating SQLite file profiles/small_forward_ctx512_all.sqlite from profiles/small_forward_ctx512_all.nsys-rep
+Processing [profiles/small_forward_ctx512_all.sqlite] with [/opt/nvidia/nsight-compute/2025.1.1/host/target-linux-x64/reports/nvtx_pushpop_sum.py]... 
+
+ ** NVTX Push/Pop Range Summary (nvtx_pushpop_sum):
+
+ Time (%)  Total Time (ns)  Instances   Avg (ns)    Med (ns)   Min (ns)  Max (ns)   StdDev (ns)          Range         
+ --------  ---------------  ---------  ----------  ----------  --------  ---------  -----------  ----------------------
+     94.9        403943680          6  67323946.7  14672445.5  14555296  330286282  128824926.0  :forward              
+      3.9         16751962          1  16751962.0  16751962.0  16751962   16751962          0.0  :measured_region      
+      1.1          4862379          1   4862379.0   4862379.0   4862379    4862379          0.0  cuBLAS:cublasCreate_v2
+

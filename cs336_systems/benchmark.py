@@ -56,14 +56,18 @@ def run_step(model, inputs, targets, mode, optimizer):
         raise ValueError(f"Unknown mode: {mode}")
     if mode in {'forward_backward','full_step'}:
         model.zero_grad(set_to_none = True)
-    logits = model(inputs)
+    with torch.cuda.nvtx.range("forward"):
+        logits = model(inputs)
     if mode == 'forward':
         return 
-    loss = cross_entropy(logits, targets)
-    loss.backward()
+    with torch.cuda.nvtx.range("loss"):
+        loss = cross_entropy(logits, targets)
+    with torch.cuda.nvtx.range("backward"):
+        loss.backward()
 
     if mode == 'full_step':
-        optimizer.step()
+        with torch.cuda.nvtx.range("optimizer"):
+            optimizer.step()
 
 def synchronize(device):
     #避免在没有cuda的时候报错
@@ -119,7 +123,7 @@ def parse_args():
     parser.add_argument(
         '--model-size',
         choices = ['small','medium','large','xl','10B'],
-        default = 'small',
+        default = 'medium',
         help = 'Transformer model configuration'
     )
     args = parser.parse_args()  #不是循环嵌套
@@ -178,15 +182,16 @@ def main():
     #正式测量
     measurement_steps = args.measurement_steps
     elapsed_times = []
-    for _ in range(measurement_steps):
-        synchronize(device)
-        start = default_timer()
+    with torch.cuda.nvtx.range("measured_region"):
+        for _ in range(measurement_steps):
+            synchronize(device)
+            start = default_timer()
 
-        run_step(model, inputs, targets,mode,optimizer)
+            run_step(model, inputs, targets,mode,optimizer)
 
-        synchronize(device)
-        end = default_timer()
-        elapsed_times.append(end - start)
+            synchronize(device)
+            end = default_timer()
+            elapsed_times.append(end - start)
     elapsed_times_ms = np.array(elapsed_times) * 1000  #转化为毫秒
     print(f"device: {device}")
     print(f"dtype: {args.dtype}")

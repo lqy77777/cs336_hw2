@@ -1,0 +1,30 @@
+
+NOTICE: Existing SQLite export found: profiles/small_forward_smoke.sqlite
+        It is assumed file was previously exported from: profiles/small_forward_smoke.nsys-rep
+        Consider using --force-export=true if needed.
+
+Processing [profiles/small_forward_smoke.sqlite] with [/opt/nvidia/nsight-compute/2025.1.1/host/target-linux-x64/reports/cuda_api_sum.py]... 
+
+ ** CUDA API Summary (cuda_api_sum):
+
+ Time (%)  Total Time (ns)  Num Calls   Avg (ns)   Med (ns)   Min (ns)  Max (ns)  StdDev (ns)                   Name                  
+ --------  ---------------  ---------  ----------  ---------  --------  --------  -----------  ---------------------------------------
+     54.6        265360954         25  10614438.2  9194865.0    115297  52752797   11339849.5  cuLibraryLoadData                      
+     35.5        172743767       9788     17648.5     4095.0      3024  33244000     444150.5  cudaLaunchKernel                       
+      4.7         22729923        147    154625.3   102730.0      3336   4456397     365795.9  cudaMalloc                             
+      2.2         10778548         25    431141.9   546000.0      1294    935418     412155.7  cudaDeviceSynchronize                  
+      1.3          6250844       1541      4056.4     3706.0      2803     58742       2377.7  cuLaunchKernel                         
+      1.0          5082553       1260      4033.8     3395.5      2456     55505       2701.7  cudaMemsetAsync                        
+      0.4          2065543       1455      1419.6      265.0       198   1524433      39976.9  cuKernelGetFunction                    
+      0.2           796779       9788        81.4       64.0        48      9470        131.6  cuKernelGetName                        
+      0.0           144517        320       451.6      305.5       176      5748        500.7  cudaStreamIsCapturing_v10000           
+      0.0           142727        880       162.2      112.0        59      5863        227.6  cuGetProcAddress_v2                    
+      0.0            88046          1     88046.0    88046.0     88046     88046          0.0  cuModuleLoadData                       
+      0.0            78515         37      2122.0     1129.0       455      6987       1828.6  cuLibraryGetKernel                     
+      0.0            22283          1     22283.0    22283.0     22283     22283          0.0  cudaFree                               
+      0.0             6966         18       387.0      256.0       233      2224        463.5  cudaEventCreateWithFlags               
+      0.0             3287          4       821.8      628.0       469      1562        508.8  cuInit                                 
+      0.0             1558          3       519.3      105.0        73      1380        745.5  cuModuleGetLoadingMode                 
+      0.0              870          2       435.0      435.0       219       651        305.5  cudaGetDeviceProperties_v2_v12000      
+      0.0              821          3       273.7      236.0       176       409        121.0  cudaGetDriverEntryPointByVersion_v12050
+
